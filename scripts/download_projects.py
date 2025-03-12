@@ -20,6 +20,7 @@ def get_all_items(criteria, offset=0):
     # Attempt to download a single data packet
     payload = {
         "criteria": criteria,
+        "sort_field": "appl_id",
         "offset": offset,
         "limit": 500
     }
@@ -49,7 +50,7 @@ def get_all_items(criteria, offset=0):
     return items
 
 
-def download_items_for_date(from_date):
+def download_items_for_date(from_date, force=False):
     # Skip if already downloaded
     dest_dir = os.path.join(
         "data",
@@ -59,7 +60,7 @@ def download_items_for_date(from_date):
         f"month_added={from_date.strftime('%m')}"
     )
     dest_filename = f"projects_added_{from_date.strftime('%Y_%m_%d')}.json"
-    if os.path.exists(os.path.join(dest_dir, dest_filename)):
+    if os.path.exists(os.path.join(dest_dir, dest_filename)) and not force:
         logger.info(f"Skipping download for {from_date.strftime('%Y-%m-%d')}")
         return
 
@@ -90,7 +91,7 @@ def download_items_for_date(from_date):
 
 
 if __name__ == "__main__":
-    query_datetime = datetime.datetime.fromisoformat("2016-01-01")
-    while query_datetime < datetime.datetime.now() - datetime.timedelta(days=1):
-        download_items_for_date(query_datetime)
+    query_datetime = datetime.datetime.fromisoformat("2022-01-01")
+    while query_datetime < datetime.datetime.fromisoformat("2025-04-01"):
+        download_items_for_date(query_datetime, force=True)
         query_datetime += datetime.timedelta(days=1)
