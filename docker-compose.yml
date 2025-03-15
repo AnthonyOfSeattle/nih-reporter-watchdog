@@ -2,7 +2,22 @@ version: '3.8'
 
 services:
 
+  notebook:
+    build: ./notebook
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./data:/home/jovyan/data
+      - ./public:/home/jovyan/public
+      - ./notebook/work:/home/jovyan/work
+
   scratch:
     build: .
     volumes:
-      - ./:/home
+      - ./data:/data
+      - ./scripts:/scripts
+
+networks:
+  default:
+    attachable: true
+
