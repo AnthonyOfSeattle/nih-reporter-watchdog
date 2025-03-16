@@ -15,6 +15,26 @@ logger.setLevel(logging.INFO)
 REPORTER_API_URL = "https://api.reporter.nih.gov/v2/"
 
 
+class TooManyRecordsError(Exception):
+    pass
+
+
+def get_total_items(criteria):
+    payload = {
+        "criteria": criteria,
+        "limit": 1
+    }
+
+    response = requests.post(
+        os.path.join(REPORTER_API_URL, "projects", "search"),
+        json=payload
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    return data["meta"]["total"]
+
+
 def get_all_items(criteria, offset=0):
     items = []
 
@@ -31,6 +51,12 @@ def get_all_items(criteria, offset=0):
     )
     response.raise_for_status()
     data = response.json()
+
+    if data["meta"]["total"] > 15000:
+        logger.info(
+            "Detected too many records for standard download"
+        )
+        raise TooManyRecordsError()
 
     items.extend(
         data["results"]
@@ -103,12 +129,33 @@ def get_items_for_date_range(from_date, to_date):
             "to_date": to_date.isoformat()
         },
     }
-    items = get_all_items(criteria)
-    if not items:
+
+    # Sometimes there are too many records.
+    # In this case we switch to stricter criteria.
+    try:
+        items = get_all_items(criteria)
+        if not items:
+            logger.info(
+                "No items found for date range"
+            )
+            return
+    except TooManyRecordsError:
         logger.info(
-            "No items found for date range"
+            "Too many records, trying to download by fiscal year"
         )
-        return
+        total = get_total_items(criteria)
+        fiscal_year = from_date.year + 1
+        items = []
+        while len(items) < total and fiscal_year > 1980:
+            logger.info(
+                f"Downloading data subset for fiscal year {fiscal_year}"
+            )
+            criteria["fiscal_years"] = [fiscal_year]
+            items += get_all_items(criteria)
+            fiscal_year -= 1
+
+        if len(items) < total:
+            raise Exception("Could not get all items using fiscal year")
 
     # Group by date_added and send to files
     logger.info(
@@ -138,6 +185,8 @@ def get_items_for_date_range(from_date, to_date):
             f"month_added={date.strftime('%m')}"
         )
         dest_filename = f"projects_added_{date.strftime('%Y_%m_%d')}.json"
+
+        os.makedirs(dest_dir, exist_ok=True)
         with open(os.path.join(dest_dir, dest_filename), "w") as dest:
             json.dump(group, dest, indent=4)
 
@@ -191,9 +240,6 @@ def get_data_for_year(year):
 
 
 if __name__ == "__main__":
-    get_data_for_year(2024)
-    get_data_for_year(2025)
-    #query_datetime = datetime.datetime.fromisoformat("2015-01-01")
-    #while query_datetime < datetime.datetime.fromisoformat("2016-01-01"):
-    #    download_items_for_date(query_datetime, force=True)
-    #    query_datetime += datetime.timedelta(days=1)
+    for year in reversed(range(2012, 2026)):
+        get_data_for_year(year)
+        break
