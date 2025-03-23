@@ -11,6 +11,24 @@ services:
       - ./public:/home/jovyan/public
       - ./notebook/work:/home/jovyan/work
 
+  db:
+    image: postgres:17.4
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: nih-reporter-watchdog
+    volumes:
+      - ./data/postgresql:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./backend/app:/app
+
   scratch:
     build: .
     volumes:
