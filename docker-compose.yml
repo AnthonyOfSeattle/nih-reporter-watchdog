@@ -17,8 +17,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
       POSTGRES_DB: nih-reporter-watchdog
-    volumes:
-      - ./data/postgresql:/var/lib/postgresql/data
+      #volumes:
+      #- ./data/postgresql:/var/lib/postgresql/data
 
   backend:
     build: ./backend
